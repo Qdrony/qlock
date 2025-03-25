@@ -45,6 +45,7 @@ namespace qlockAPI.Controllers
             var keyEntity = _mapper.Map<Key>(createKeyDTO);
             keyEntity.SecretKey = _keyGenerationService.GenerateSecretKey();
             keyEntity.CreatedAt = DateTime.Now;
+            keyEntity.Status = "Active";
 
             try
             {

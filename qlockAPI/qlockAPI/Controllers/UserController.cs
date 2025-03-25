@@ -8,9 +8,11 @@ using qlockAPI.Core.Services.UserService;
 using qlockAPI.Core.DTOs.KeyDTOs;
 using qlockAPI.Core.Database;
 using qlockAPI.Core.DTOs.LockDTOs;
+using Microsoft.AspNetCore.Cors;
 
 namespace qlockAPI.Controllers
 {
+    [EnableCors("AllowAllHeaders")]
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
@@ -137,14 +139,14 @@ namespace qlockAPI.Controllers
         [Route("getall")]
         public async Task<ActionResult<IEnumerable<User>>> GetUser()
         {
-            var result = await _context.Users.AsNoTracking().ToListAsync();
+            var users = await _context.Users.AsNoTracking().ToListAsync();
 
-            if (result is null)
+            if (users is null)
             {
                 return NotFound("Users not found!");
             }
 
-            return Ok(result);
+            return Ok(_mapper.Map<IEnumerable<UserViewDTO>>(users));
         }
 
         //Create

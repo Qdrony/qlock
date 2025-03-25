@@ -183,7 +183,7 @@ namespace qlockAPI.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, new { error = "An error occurred while update the lock" });
+                return StatusCode(500, new { error = "An error occurred while delete the lock" });
             }
 
             return Ok("Lock deleted");

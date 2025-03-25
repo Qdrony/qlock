@@ -47,7 +47,7 @@ namespace qlockAPI.Websocket
 
             var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
             var userMessage = JsonConvert.DeserializeObject<Dictionary<string, object>>(message);
-            int userId = (int)userMessage["userId"];
+            int userId = (int)userMessage!["userId"];
 
             if(!HasActiveConnection(userId))
             {

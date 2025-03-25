@@ -11,7 +11,7 @@ public partial class Group
 
     public string? Description { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
 
     public virtual ICollection<AssignGroup> AssignGroups { get; set; } = new List<AssignGroup>();
 }

@@ -27,7 +27,7 @@ namespace qlockAPI.Core.AutoMapperConfig
 
             //Lock
             CreateMap<CreateLockDTO, Lock>();
-            CreateMap<Lock, UpdateLockDTO>();
+            CreateMap<UpdateLockDTO, Lock>();
 
             //Key
             CreateMap<UpdateKeyDTO,Key>();

@@ -28,6 +28,15 @@ builder.Services.AddScoped<IKeyService, KeyService>();
 builder.Services.AddTransient<IKeyGenerationService, KeyGenerationService>();
 builder.Services.AddSingleton<WebSocketHandler>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        policy => policy.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
+
 #region Authentication
 var singingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("Z91S0y5tNKB6IXL7wlCTHUZAywnnoX/KckPZ0YonZeQ="));
 
@@ -94,6 +103,7 @@ else
 {
     app.MapControllers();
 }
+app.UseCors("AllowAllOrigins");
 app.UseAuthentication();
 app.UseAuthorization();
 

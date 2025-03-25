@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using qlockAPI.Core.Database;
 using qlockAPI.Core.DTOs.GroupDTOs;
+using qlockAPI.Core.DTOs.UserDTOs;
 using qlockAPI.Core.Entities;
 
 namespace qlockAPI.Controllers
@@ -22,8 +23,8 @@ namespace qlockAPI.Controllers
 
         //Create group
         [HttpPost]
-        [Route("{lockId}/assign-user-to-group")]
-        public async Task<IActionResult> AssignUserToGroup(int lockId, [FromBody] AssignUserToGroupDTO assignDto)
+        [Route("add/{lockId}/{groupId}/{userId}")]
+        public async Task<IActionResult> AssignUserToGroup([FromRoute]int lockId, [FromRoute]int groupId, [FromRoute]int userId)
         {
             // Ellenőrzés: létezik-e a zár
             var lockEntity = await _context.Locks.FindAsync(lockId);
@@ -33,30 +34,39 @@ namespace qlockAPI.Controllers
             }
 
             // Ellenőrzés: létezik-e a felhasználó
-            var user = await _context.Users.FindAsync(assignDto.UserId);
+            var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
                 return NotFound(new { error = "User not found" });
             }
 
-            // Ellenőrzés: létezik-e a csoport az adott névvel
-            var group = await _context.Groups.FirstOrDefaultAsync(g => g.Name == assignDto.GroupName);
+            // Ellenőrzés: létezik-e a csoport
+            var group = await _context.Groups.FindAsync(groupId);
             if (group == null)
             {
-                // Ha a csoport nem létezik, hozzuk létre
-                group = new Group
+                return NotFound(new { error = "Group not found" });
+            }
+
+            // Ellenőrzés: létezik-e már a assign hozzárendelés
+            var assign = await _context.Assigns
+                .FirstOrDefaultAsync(a => a.UserId == userId && a.LockId == lockId);
+            // Ha nem létezik, akkor létrehozás
+            if (assign is null)
+            {
+                assign = new Assign
                 {
-                    Name = assignDto.GroupName,
-                    Description = assignDto.Description,
-                    CreatedAt = DateTime.UtcNow
+                    UserId = userId,
+                    LockId = lockId,
+                    AssignedAt = DateTime.UtcNow
                 };
-                _context.Groups.Add(group);
+
+                _context.Assigns.Add(assign);
                 await _context.SaveChangesAsync();
             }
 
             // Ellenőrzés: létezik-e már a hozzárendelés
             var assignGroup = await _context.AssignGroups
-                .FirstOrDefaultAsync(ag => ag.UserId == assignDto.UserId && ag.LockId == lockId && ag.GroupId == group.Id);
+                .FirstOrDefaultAsync(ag => ag.UserId == userId && ag.LockId == lockId && ag.GroupId == group.Id);
             if (assignGroup != null)
             {
                 return BadRequest(new { error = "User is already assigned to this group for the lock" });
@@ -65,7 +75,7 @@ namespace qlockAPI.Controllers
             // Új hozzárendelés létrehozása
             assignGroup = new AssignGroup
             {
-                UserId = assignDto.UserId,
+                UserId = userId,
                 LockId = lockId,
                 GroupId = group.Id,
                 CreatedAt = DateTime.UtcNow
@@ -78,8 +88,8 @@ namespace qlockAPI.Controllers
         }
 
 
-        [HttpDelete("{lockId}/remove-user-from-group")]
-        public async Task<IActionResult> RemoveUserFromGroup(int lockId, [FromBody] RemoveUserFromGroupDTO removeDto)
+        [HttpDelete("delete/{lockId}/{groupId}/{userId}")]
+        public async Task<IActionResult> RemoveUserFromGroup([FromRoute] int lockId, [FromRoute] int userId, [FromRoute] int groupId)
         {
             // Ellenőrzés: létezik-e a zár
             var lockEntity = await _context.Locks.FindAsync(lockId);
@@ -89,14 +99,14 @@ namespace qlockAPI.Controllers
             }
 
             // Ellenőrzés: létezik-e a felhasználó
-            var user = await _context.Users.FindAsync(removeDto.UserId);
+            var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
                 return NotFound(new { error = "User not found" });
             }
 
             // Ellenőrzés: létezik-e a csoport
-            var group = await _context.Groups.FindAsync(removeDto.GroupId);
+            var group = await _context.Groups.FindAsync(groupId);
             if (group == null)
             {
                 return NotFound(new { error = "Group not found" });
@@ -104,7 +114,7 @@ namespace qlockAPI.Controllers
 
             // Ellenőrzés: a felhasználó része-e a csoportnak az adott zárnál
             var assignGroup = await _context.AssignGroups
-                .FirstOrDefaultAsync(ag => ag.LockId == lockId && ag.UserId == removeDto.UserId && ag.GroupId == removeDto.GroupId);
+                .FirstOrDefaultAsync(ag => ag.LockId == lockId && ag.UserId == userId && ag.GroupId == groupId);
 
             if (assignGroup == null)
             {
@@ -118,55 +128,70 @@ namespace qlockAPI.Controllers
             return Ok(new { message = "User removed from group successfully" });
         }
 
-
-        ////
-        //[HttpPost]
-        //[Route("/create")]
-        //public async Task<IActionResult> CreateGroup([FromBody] CreateGroupDTO dto)
+        ////Get groups
+        //[HttpGet]
+        //[Route("{lockId}")]
+        //public async Task<IActionResult> GetGroupsByLock([FromRoute]int lockId)
         //{
-        //    var lockExists = await _context.Locks.AnyAsync(l => l.Id == dto.LockId);
-        //    if (!lockExists)
-        //        return NotFound(new { error = "Lock not found" });
+        //    var groups = await _context.AssignGroups
+        //                               .Where(ag => ag.LockId == lockId)
+        //                               .Include(ag => ag.Group)
+        //                               .Select(ag => ag.Group)
+        //                               .Distinct()
+        //                               .ToListAsync();
 
-        //    var group = new Group
+        //    if (!groups.Any())
         //    {
-        //        Name = dto.Name,
-        //        Description = dto.Description,
-        //        CreatedAt = DateTime.UtcNow
-        //    };
+        //        return NotFound(new { error = "No groups found for this lock" });
+        //    }
 
-        //    await _context.Groups.AddAsync(group);
-        //    await _context.SaveChangesAsync();
-
-        //    return Ok(new { message = "Group created", groupId = group.Id });
+        //    return Ok(groups.Select(g => new GroupDTO
+        //    {
+        //        Id = g.Id,
+        //        Name = g.Name,
+        //        Description = g.Description,
+        //        CreatedAt = g.CreatedAt
+        //    }));
         //}
 
         [HttpGet]
         [Route("{lockId}")]
-        public async Task<IActionResult> GetGroupsByLock([FromRoute]int lockId)
+        public async Task<IActionResult> GetGroupsByLock([FromRoute] int lockId)
         {
             var groups = await _context.AssignGroups
-                                       .Where(ag => ag.LockId == lockId)
-                                       .Include(ag => ag.Group)
-                                       .Select(ag => ag.Group)
-                                       .Distinct()
-                                       .ToListAsync();
+                .Where(ag => ag.LockId == lockId)
+                .Include(ag => ag.Group)
+                .Include(ag => ag.Assign)
+                .ThenInclude(a => a.User)
+                .ToListAsync();
 
             if (!groups.Any())
             {
                 return NotFound(new { error = "No groups found for this lock" });
             }
 
-            return Ok(groups.Select(g => new GroupDTO
-            {
-                Id = g.Id,
-                Name = g.Name,
-                Description = g.Description,
-                CreatedAt = g.CreatedAt
-            }));
+            var result = groups.GroupBy(ag => ag.Group)
+                .Select(g => new GroupWithUsersDTO
+                {
+                    Id = g.Key.Id,
+                    Name = g.Key.Name,
+                    Description = g.Key.Description,
+                    Users = g.Select(ag => ag.Assign.User)
+                             .Where(u => u != null)
+                             .Distinct()
+                             .Select(u => new UserViewDTO
+                             {
+                                 Id = u.Id,
+                                 Name = u.Name,
+                                 Email = u.Email
+                             }).ToList()
+                })
+                .ToList();
+
+            return Ok(result);
         }
 
-        //Get useres with groups
+        //Get users with groups
         [HttpGet]
         [Route("{lockId}/users-with-groups")]
         public async Task<IActionResult> GetUsersWithGroupsByLock([FromRoute]int lockId)
@@ -201,6 +226,24 @@ namespace qlockAPI.Controllers
             return Ok(usersWithGroups);
         }
 
+        [HttpDelete]
+        [Route("delete/{lockId}/{groupId}")]
+        public async Task<IActionResult> DeleteGroupFromLock([FromRoute] int lockId, [FromRoute] int groupId)
+        {
+            var assignGroups = await _context.AssignGroups
+                .Where(ag => ag.LockId == lockId && ag.GroupId == groupId)
+                .ToListAsync();
+
+            if (!assignGroups.Any())
+            {
+                return NotFound(new { error = "The specified group is not assigned to this lock" });
+            }
+
+            _context.AssignGroups.RemoveRange(assignGroups);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Group successfully removed from lock" });
+        }
 
     }
 }
