@@ -17,12 +17,6 @@ public partial class QlockContext : DbContext
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
     }
 
-    public virtual DbSet<Assign> Assigns { get; set; }
-
-    public virtual DbSet<AssignGroup> AssignGroups { get; set; }
-
-    public virtual DbSet<Group> Groups { get; set; }
-
     public virtual DbSet<Key> Keys { get; set; }
 
     public virtual DbSet<Lock> Locks { get; set; }
@@ -33,59 +27,28 @@ public partial class QlockContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//        => optionsBuilder.UseNpgsql("Host=localhost;Database=qlock;Username=postgres;Password=20010119");
+    public virtual DbSet<Assign> Assigns { get; set; }
+
+    public virtual DbSet<Group> Groups { get; set; }
+
+    //    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    //#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+    //        => optionsBuilder.UseNpgsql("Host=localhost;Database=qlock;Username=postgres;Password=20010119");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Assign>(entity =>
         {
-            entity.HasKey(e => new { e.LockId, e.UserId }).HasName("assigns_pkey");
+            entity.HasKey(e => new { e.GroupId, e.UserId }).HasName("assigns_pkey");
 
             entity.ToTable("assigns");
 
-            entity.Property(e => e.LockId).HasColumnName("lock_id");
+            entity.Property(e => e.GroupId).HasColumnName("group_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.AssignedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("assigned_at");
-
-            entity.HasOne(d => d.Lock).WithMany(p => p.Assigns)
-                .HasForeignKey(d => d.LockId)
-                .HasConstraintName("assigns_lock_id_fkey");
-
-            entity.HasOne(d => d.User).WithMany(p => p.Assigns)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("assigns_user_id_fkey");
-        });
-
-        modelBuilder.Entity<AssignGroup>(entity =>
-        {
-            entity.HasKey(e => new { e.UserId, e.LockId, e.GroupId }).HasName("assign_groups_pkey");
-
-            entity.ToTable("assign_groups");
-
-            entity.HasIndex(e => e.LockId, "idx_assign_groups_lock_id");
-
-            entity.HasIndex(e => e.UserId, "idx_assign_groups_user_id");
-
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.LockId).HasColumnName("lock_id");
-            entity.Property(e => e.GroupId).HasColumnName("group_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("created_at");
-
-            entity.HasOne(d => d.Group).WithMany(p => p.AssignGroups)
-                .HasForeignKey(d => d.GroupId)
-                .HasConstraintName("assign_groups_group_id_fkey");
-
-            entity.HasOne(d => d.Assign).WithMany(p => p.AssignGroups)
-                .HasForeignKey(d => new { d.LockId, d.UserId })
-                .HasConstraintName("assign_groups_lock_id_user_id_fkey");
         });
 
         modelBuilder.Entity<Group>(entity =>
@@ -99,7 +62,10 @@ public partial class QlockContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
-            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Description)
+                .HasMaxLength(255)
+                .HasColumnName("description");
+            entity.Property(e => e.LockId).HasColumnName("lock_id");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
@@ -261,6 +227,7 @@ public partial class QlockContext : DbContext
             entity.Property(e => e.Password)
                 .HasMaxLength(255)
                 .HasColumnName("password");
+            entity.Property(e => e.Pushtoken).HasColumnName("pushtoken");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasColumnName("status");

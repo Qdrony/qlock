@@ -19,6 +19,8 @@ public partial class User
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? Pushtoken { get; set; }
+
     public virtual ICollection<Assign> Assigns { get; set; } = new List<Assign>();
 
     public virtual ICollection<Key> Keys { get; set; } = new List<Key>();

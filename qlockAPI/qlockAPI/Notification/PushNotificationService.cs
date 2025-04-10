@@ -1,40 +1,39 @@
-﻿using System.Net.Http.Headers;
+﻿using Microsoft.EntityFrameworkCore;
+using qlockAPI.Core.Database;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace qlockAPI.Notification
 {
     public class PushNotificationService : IPushNotificationService
     {
-        public async Task SendNotificationAsync(int userId, string title, string body)
-        {
-            var userDeviceToken = await GetUserDeviceTokenAsync(userId); // Lekérdezi a felhasználó eszközének tokenjét
+        private readonly QlockContext _context;
 
-            if (!string.IsNullOrEmpty(userDeviceToken))
+        public PushNotificationService(QlockContext context)
+        {
+            _context = context;
+        }
+        public async Task<bool> SendNotificationAsync(int userId, string title, string message)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null || string.IsNullOrEmpty(user.Pushtoken))
+                return false;
+
+            using var client = new HttpClient();
+            var requestBody = new
             {
-                var payload = new
-                {
-                    to = userDeviceToken,
-                    notification = new
-                    {
-                        title = title,
-                        body = body
-                    }
-                };
+                to = user.Pushtoken,
+                sound = "default",
+                title = title,
+                body = message
+            };
 
-                using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("key", "YOUR_SERVER_KEY");
+            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("https://exp.host/--/api/v2/push/send", content);
 
-                var response = await httpClient.PostAsJsonAsync("https://fcm.googleapis.com/fcm/send", payload);
-                if (!response.IsSuccessStatusCode)
-                {
-                    // Logolás hibás push értesítés esetén TODO
-                }
-            }
+            return response.IsSuccessStatusCode;
         }
 
-        private Task<string> GetUserDeviceTokenAsync(int userId)
-        {
-            //A token lekérdezését az adatbázisból TODO
-            throw new NotImplementedException();
-        }
     }
 }

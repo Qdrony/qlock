@@ -6,6 +6,7 @@ using qlockAPI.Core.Database;
 using qlockAPI.Core.Services.KeyGenerationService;
 using qlockAPI.Core.Services.KeyService;
 using qlockAPI.Core.Services.UserService;
+using qlockAPI.Notification;
 using qlockAPI.Websocket;
 using System.Text;
 
@@ -25,6 +26,7 @@ builder.Services.AddDbContext<QlockContext>(options =>
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IKeyService, KeyService>();
+builder.Services.AddScoped<IPushNotificationService, PushNotificationService>();
 builder.Services.AddTransient<IKeyGenerationService, KeyGenerationService>();
 builder.Services.AddSingleton<WebSocketHandler>();
 

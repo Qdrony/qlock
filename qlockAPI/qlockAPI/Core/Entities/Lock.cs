@@ -15,8 +15,6 @@ public partial class Lock
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual ICollection<Assign> Assigns { get; set; } = new List<Assign>();
-
     public virtual ICollection<Key> Keys { get; set; } = new List<Key>();
 
     public virtual ICollection<Log> Logs { get; set; } = new List<Log>();

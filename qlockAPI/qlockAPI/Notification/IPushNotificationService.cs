@@ -2,6 +2,6 @@
 {
     public interface IPushNotificationService
     {
-        Task SendNotificationAsync(int userId, string title, string body);
+        Task<bool> SendNotificationAsync(int userId, string title, string body);
     }
 }

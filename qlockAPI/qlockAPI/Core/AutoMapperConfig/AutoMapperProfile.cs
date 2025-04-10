@@ -46,7 +46,7 @@ namespace qlockAPI.Core.AutoMapperConfig
             .ForMember(dest => dest.KeyId, opt => opt.MapFrom(src => src.Key.Id));
 
             //Group
-            CreateMap<AssignGroup,GroupDTO>();
+            CreateMap<CreateGroupDTO, Group>();
         }
     }
 }

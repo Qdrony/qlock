@@ -107,7 +107,7 @@ namespace qlockAPI.Controllers
 
         //Update user
         [HttpPut]
-        [Route("{id}")]
+        [Route("update/{id}")]
         public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDTO updateUserDTO,[FromRoute] int id)
         {
             var user = await _context.Users.FindAsync(id);
