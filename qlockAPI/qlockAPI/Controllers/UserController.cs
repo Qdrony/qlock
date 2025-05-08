@@ -9,6 +9,8 @@ using qlockAPI.Core.DTOs.KeyDTOs;
 using qlockAPI.Core.Database;
 using qlockAPI.Core.DTOs.LockDTOs;
 using Microsoft.AspNetCore.Cors;
+using qlockAPI.Notification;
+using qlockAPI.Core.DTOs.NotificationDTOs;
 
 namespace qlockAPI.Controllers
 {
@@ -21,12 +23,14 @@ namespace qlockAPI.Controllers
         private readonly QlockContext _context;
         private readonly IMapper _mapper;
         private readonly IUserService _userService;
+        private readonly IPushNotificationService _pushNotificationService;
 
-        public UserController(QlockContext context,IMapper mapper,IUserService userService)
+        public UserController(QlockContext context,IMapper mapper,IUserService userService,IPushNotificationService pushNotificationService)
         {
             _context = context;
             _mapper = mapper;
             _userService = userService;
+            _pushNotificationService = pushNotificationService;
         }
 
         //Change password
@@ -77,6 +81,19 @@ namespace qlockAPI.Controllers
 
             var token = _userService.GenerateJwtToken(user);
             user.LastLogin = DateTime.Now;
+
+            PushRequest pushRequest = new PushRequest
+            {
+                Token = user.Pushtoken!,
+                Title = "Login",
+                Body = "You have successfully logged in."
+            };
+
+            if (_pushNotificationService.SendPushNotificationAsync(pushRequest).Result)
+            {
+                //TODO log success
+            }
+
             await _context.SaveChangesAsync();
             return Ok(new { token, user = _mapper.Map<UserViewDTO>(user) });
         }

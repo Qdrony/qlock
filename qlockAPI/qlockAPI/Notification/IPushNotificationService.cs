@@ -1,7 +1,9 @@
-﻿namespace qlockAPI.Notification
+﻿using qlockAPI.Core.DTOs.NotificationDTOs;
+
+namespace qlockAPI.Notification
 {
     public interface IPushNotificationService
     {
-        Task<bool> SendNotificationAsync(int userId, string title, string body);
+        Task<bool> SendPushNotificationAsync(PushRequest pushRequest);
     }
 }

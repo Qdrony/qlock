@@ -82,7 +82,7 @@ namespace qlockAPI.Core.Services.KeyService
         {
             var keyEntity = await _context.Keys.FindAsync(keyId);
 
-            if (keyEntity is null || keyEntity.Status != "active")
+            if (keyEntity is null || keyEntity.Status == "inactive")
             {
                return false;
             }

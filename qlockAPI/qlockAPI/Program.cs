@@ -5,6 +5,8 @@ using qlockAPI.Core.AutoMapperConfig;
 using qlockAPI.Core.Database;
 using qlockAPI.Core.Services.KeyGenerationService;
 using qlockAPI.Core.Services.KeyService;
+using qlockAPI.Core.Services.LogService;
+using qlockAPI.Core.Services.MonitorService;
 using qlockAPI.Core.Services.UserService;
 using qlockAPI.Notification;
 using qlockAPI.Websocket;
@@ -26,9 +28,14 @@ builder.Services.AddDbContext<QlockContext>(options =>
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IKeyService, KeyService>();
+builder.Services.AddScoped<ILogService, LogService>();
 builder.Services.AddScoped<IPushNotificationService, PushNotificationService>();
 builder.Services.AddTransient<IKeyGenerationService, KeyGenerationService>();
 builder.Services.AddSingleton<WebSocketHandler>();
+builder.Services.AddHttpClient<PushNotificationService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ILockAttemptMonitor, LockAttemptMonitor>();
+
 
 builder.Services.AddCors(options =>
 {

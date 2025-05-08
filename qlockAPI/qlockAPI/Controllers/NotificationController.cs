@@ -20,16 +20,16 @@ namespace qlockAPI.Controllers
             _context = context;
         }
 
-        [HttpPost("register-push-token")]
-        public async Task<IActionResult> RegisterPushToken([FromBody] PushTokenDTO dto)
+        [HttpPost("register-token")]
+        public async Task<IActionResult> RegisterPushToken([FromBody] PushTokenDTO pushTokenDTO)
         {
-            var user = await _context.Users.FindAsync(dto.UserId);
-            if (user == null)
+            var user = await _context.Users.FindAsync(pushTokenDTO.UserId);
+            if (user is null)
             {
                 return NotFound(new { error = "User not found" });
             }
 
-            user.Pushtoken = dto.Token;
+            user.Pushtoken = pushTokenDTO.Token;
             await _context.SaveChangesAsync();
             return Ok(new { message = "Push token registered" });
         }
