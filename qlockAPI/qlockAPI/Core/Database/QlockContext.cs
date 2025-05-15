@@ -107,6 +107,8 @@ public partial class QlockContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Keys)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("keys_user_id_fkey");
+            entity.Property(e => e.StartTime).HasColumnName("start_time");
+            entity.Property(e => e.EndTime).HasColumnName("end_time");
         });
 
         modelBuilder.Entity<Lock>(entity =>

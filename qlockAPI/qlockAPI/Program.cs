@@ -5,6 +5,7 @@ using qlockAPI.Core.AutoMapperConfig;
 using qlockAPI.Core.Database;
 using qlockAPI.Core.Services.KeyGenerationService;
 using qlockAPI.Core.Services.KeyService;
+using qlockAPI.Core.Services.LockService;
 using qlockAPI.Core.Services.LogService;
 using qlockAPI.Core.Services.MonitorService;
 using qlockAPI.Core.Services.UserService;
@@ -14,10 +15,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -29,6 +27,7 @@ builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IKeyService, KeyService>();
 builder.Services.AddScoped<ILogService, LogService>();
+builder.Services.AddScoped<ILockService, LockService>();
 builder.Services.AddScoped<IPushNotificationService, PushNotificationService>();
 builder.Services.AddTransient<IKeyGenerationService, KeyGenerationService>();
 builder.Services.AddSingleton<WebSocketHandler>();

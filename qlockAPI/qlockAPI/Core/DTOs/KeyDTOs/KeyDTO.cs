@@ -9,9 +9,12 @@
         public DateTime? ExpirationDate { get; set; }
         public int RemainingUses { get; set; }
         public int UserId { get; set; }
+        public string UserName { get; set; }
         public bool Used { get; set; }
         public DateTime CreatedAt { get; set; }
         public int LockId { get; set; }
         public string LockName { get; set; }
+        public TimeOnly? StartTime { get; set; }
+        public TimeOnly? EndTime { get; set; }
     }
 }

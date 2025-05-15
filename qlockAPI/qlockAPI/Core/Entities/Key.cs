@@ -22,6 +22,9 @@ public partial class Key
     public int UserId { get; set; }
 
     public int LockId { get; set; }
+    public TimeOnly? StartTime { get; set; }
+
+    public TimeOnly? EndTime { get; set; }
 
     public virtual Lock Lock { get; set; } = null!;
 

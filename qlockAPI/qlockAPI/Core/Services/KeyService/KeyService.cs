@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using qlockAPI.Core.Database;
+using qlockAPI.Notification;
 
 namespace qlockAPI.Core.Services.KeyService
 {
@@ -70,7 +71,8 @@ namespace qlockAPI.Core.Services.KeyService
 
         public async Task<bool> IsKeyAssignedToLockAsync(int keyId, int lockId)
         {
-            return await _context.Keys.AnyAsync(k => k.Id == keyId && k.LockId == lockId);
+            var keyEntity = await _context.Keys.FindAsync(keyId);
+            return await _context.Keys.AnyAsync(k => k.Id == keyId && k.LockId == lockId) && keyEntity!.Name == "active";
         }
 
         public async Task<bool> IsKeyAssignedToUserAsync(int keyId, int userId)
@@ -87,10 +89,27 @@ namespace qlockAPI.Core.Services.KeyService
                return false;
             }
 
+            var now = TimeOnly.FromDateTime(DateTime.Now);
+
             var isNotExpired = keyEntity.ExpirationDate is null || keyEntity.ExpirationDate >= DateTime.Now;
             var hasUsesRemaining = keyEntity.RemainingUses == -1 || keyEntity.RemainingUses > 0;
+            bool isWithinTime;
 
-            return isNotExpired && hasUsesRemaining;
+            if (keyEntity.StartTime is null || keyEntity.EndTime is null)
+            {
+                isWithinTime = true;
+            }
+            else if (keyEntity.StartTime <= keyEntity.EndTime)
+            {
+                isWithinTime = now >= keyEntity.StartTime && now <= keyEntity.EndTime;
+            }
+            else
+            {
+                isWithinTime = now >= keyEntity.StartTime || now <= keyEntity.EndTime;
+            }
+
+
+            return isNotExpired && hasUsesRemaining && isWithinTime;
         }
 
     }

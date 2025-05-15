@@ -10,5 +10,7 @@ namespace qlockAPI.Core.DTOs.KeyDTOs
         public int LockId { get; set; }
         public int RemainingUses { get; set; }
         public string? Name { get; set; }
+        public string? StartTimeString { get; set; }
+        public string? EndTimeString { get; set; }
     }
 }

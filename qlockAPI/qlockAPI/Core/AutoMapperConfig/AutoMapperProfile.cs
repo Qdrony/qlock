@@ -33,7 +33,9 @@ namespace qlockAPI.Core.AutoMapperConfig
             CreateMap<UpdateKeyDTO,Key>();
             CreateMap<Key, KeyDTO>()
             .ForMember(dest => dest.LockId, opt => opt.MapFrom(src => src.Lock.Id))
-            .ForMember(dest => dest.LockName, opt => opt.MapFrom(src => src.Lock.Name));
+            .ForMember(dest => dest.LockName, opt => opt.MapFrom(src => src.Lock.Name))
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.User.Id))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.Name));
             CreateMap<CreateKeyDTO, Key>();
 
             //Log

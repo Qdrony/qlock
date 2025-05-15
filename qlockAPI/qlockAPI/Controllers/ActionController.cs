@@ -1,15 +1,14 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using qlockAPI.Core.Database;
 using qlockAPI.Core.DTOs.ActionDTOs;
 using qlockAPI.Core.DTOs.NotificationDTOs;
-using qlockAPI.Core.DTOs.UserDTOs;
 using qlockAPI.Core.Entities;
 using qlockAPI.Core.Services.KeyService;
+using qlockAPI.Core.Services.LockService;
 using qlockAPI.Core.Services.LogService;
+using qlockAPI.Core.Services.MonitorService;
 using qlockAPI.Notification;
 
 namespace qlockAPI.Controllers
@@ -24,21 +23,24 @@ namespace qlockAPI.Controllers
         private readonly IKeyService _keyService;
         private readonly ILogService _logService;
         private readonly IPushNotificationService _pushNotificationService;
+        private readonly ILockAttemptMonitor _lockAttemptMonitor;
+        private readonly ILockService _lockService;
 
-        public ActionController(QlockContext context,IMapper mapper,IKeyService keyService,ILogService logService,IPushNotificationService pushNotificationService)
+        public ActionController(QlockContext context,IMapper mapper,IKeyService keyService,ILogService logService,IPushNotificationService pushNotificationService,ILockAttemptMonitor lockAttemptMonitor,ILockService lockService)
         {
             _context = context;
             _mapper = mapper;
             _keyService = keyService;
             _logService = logService;
             _pushNotificationService = pushNotificationService;
+            _lockAttemptMonitor = lockAttemptMonitor;
+            _lockService = lockService;
         }
 
         [HttpPost]
         [Route("open")]
         public async Task<IActionResult> OpenLock([FromBody] LockOpenRequestDTO request)
         {
-            Console.WriteLine("Open api meghíva.");
             if (request is null || request.KeyId <= 0 || request.UserId <= 0 || request.LockId <= 0)
             {
                 return BadRequest(new { error = "Invalid request." });
@@ -46,40 +48,43 @@ namespace qlockAPI.Controllers
 
             var lockEntity = await _context.Locks.FindAsync(request.LockId);
             var lockOwner = await _context.Users.FirstOrDefaultAsync(u => u.Id == lockEntity.Owner);
+            var requestUserPushtoken = _context.Users.FirstOrDefault(u => u.Id == request.UserId)?.Pushtoken;
 
-            async Task SendPushAndLog(string title, string body, string status, string text)
+            async Task SendPush(string pushToken,string title, string body)
             {
-                Console.WriteLine("Text: " + text + "body:" + body);
                 if (lockOwner?.Pushtoken is not null)
                 {
                     var pushRequest = new PushRequest
                     {
-                        Token = lockOwner.Pushtoken,
+                        Token = pushToken,
                         Title = title,
                         Body = body
                     };
 
-                    var sent = await _pushNotificationService.SendPushNotificationAsync(pushRequest);
-                    if (sent)
-                    {
-                        await _logService.LogActionAsync(request.UserId, request.LockId, request.KeyId, request.RequestTime, "PushNotification", "Success", $"{title} - {body} - {text}");
-                    }
+                    await _pushNotificationService.SendPushNotificationAsync(pushRequest);
                 }
-
-                await _logService.LogActionAsync(request.UserId, request.LockId, request.KeyId, request.RequestTime, "OpenLock", status, text);
             }
 
             var isValidKey = await _keyService.IsKeyValidAsync(request.KeyId);
             if (!isValidKey)
             {
-                await SendPushAndLog("Warning!", "Failed access attempt detected on your lock.", "Failed", "Key is invalid or inactive.");
+                if (_lockAttemptMonitor.RegisterFailedAttemptAsync(request.LockId).Result) 
+                {
+                    _lockService.BlockLockAsync(request.LockId).Wait();
+                    await SendPush(lockOwner.Pushtoken, "Warning!", "Your lock has been temporarily disabled due to repeated failed access attempts.");
+                }
+                await SendPush(lockOwner.Pushtoken, "Warning!", "Failed access attempt detected on your lock. Key is invalid or inactive.");
+                await SendPush(requestUserPushtoken, "Warning!", "Failed access attempt. Key is invalid or inactive.");
+                await _logService.LogActionAsync(request.UserId, request.LockId, request.KeyId, request.RequestTime, "OpenLock", "Failed", "Key is invalid or inactive");
                 return BadRequest(new { error = "Key is invalid or inactive." });
             }
 
             var isAssigned = await _keyService.IsKeyAssignedToLockAsync(request.KeyId, request.LockId);
             if (!isAssigned)
             {
-                await SendPushAndLog("Warning!", "Failed access attempt detected on your lock.", "Failed", "Key is not assigned to the specified lock.");
+                await SendPush(lockOwner.Pushtoken,"Warning!", "Failed access attempt detected on your lock. Key is not assigned to the specified lock.");
+                await SendPush(requestUserPushtoken, "Warning!", "Failed access attempt. Key is invalid or inactive.");
+                await _logService.LogActionAsync(request.UserId, request.LockId, request.KeyId, request.RequestTime, "OpenLock", "Failed", "Key is not assigned to the specified lock");
                 return BadRequest(new { error = "Key is not assigned to the specified lock." });
             }
 
@@ -89,11 +94,10 @@ namespace qlockAPI.Controllers
                 return BadRequest(new { error = "Key does not belong to the specified user." });
             }
 
-            await SendPushAndLog("Opening attempt!", "Someone has accessed your lock.", "Success", "Key validated successfully. Awaiting lock confirmation.");
-
+            await SendPush(lockOwner.Pushtoken, "Opening attempt!", "Someone has accessed your lock. Key validated successfully.");  
+            await SendPush(requestUserPushtoken,"Opening attempt!", "Successful entry");
 
             await _keyService.DecreaseKeyUsageAsync(request.KeyId);
-            
             return Ok(new { status = "ok", message = "Key validated. Waiting for lock confirmation for action to proceed." });
         }
 

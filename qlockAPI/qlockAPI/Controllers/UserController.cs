@@ -233,6 +233,7 @@ namespace qlockAPI.Controllers
         public async Task<ActionResult<IEnumerable<KeyDTO>>> GetUserKeys([FromRoute] int userId)
         {
             var keys = await _context.Keys.Include(k => k.Lock)
+                                     .Include(k => k.User)
                                      .Where(k => k.UserId == userId)
                                      .ToListAsync();
 

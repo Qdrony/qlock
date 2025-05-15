@@ -2,6 +2,6 @@
 {
     public interface ILockService
     {
-       
+        Task<bool> BlockLockAsync(int lockId);
     }
 }

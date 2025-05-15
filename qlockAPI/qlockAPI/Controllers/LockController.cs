@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using qlockAPI.Core.Database;
+using qlockAPI.Core.DTOs.KeyDTOs;
 using qlockAPI.Core.DTOs.LockDTOs;
 using qlockAPI.Core.Entities;
 using qlockAPI.Core.Services.UserService;
@@ -25,6 +26,22 @@ namespace qlockAPI.Controllers
             _userService = userService;
         }
 
+        //count how many locks belong to a user
+        [HttpGet]
+        [Route("count/{userId}")]
+        public async Task<IActionResult> CountLocks([FromRoute] int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user is null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            var lockCount = await _context.Locks.CountAsync(l => l.Owner == userId);
+
+            return Ok(new { count = lockCount });
+        }
+
         //Get keys for lock
         [HttpGet]
         [Route("{lockId}/keys")]
@@ -38,6 +55,8 @@ namespace qlockAPI.Controllers
             }
 
             var keys = await _context.Keys.AsNoTracking()
+                                     .Include(k => k.Lock)
+                                     .Include(k => k.User)
                                      .Where(k => k.LockId == lockId)
                                      .ToListAsync();
 
@@ -45,8 +64,9 @@ namespace qlockAPI.Controllers
             {
                 return NotFound(new { error = "No keys found for this lock" });
             }
-
-            return Ok(keys);
+            var keysDTO = _mapper.Map<IEnumerable<KeyDTO>>(keys);
+            
+            return Ok(keysDTO);
         }
 
         //Create lock

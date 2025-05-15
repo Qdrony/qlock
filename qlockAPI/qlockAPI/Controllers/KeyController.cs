@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using qlockAPI.Core.Database;
 using qlockAPI.Core.DTOs.KeyDTOs;
+using qlockAPI.Core.DTOs.NotificationDTOs;
 using qlockAPI.Core.Entities;
 using qlockAPI.Core.Services.KeyGenerationService;
+using qlockAPI.Notification;
 
 namespace qlockAPI.Controllers
 {
@@ -17,13 +19,33 @@ namespace qlockAPI.Controllers
         private readonly QlockContext _context;
         private readonly IMapper _mapper;
         private readonly IKeyGenerationService _keyGenerationService;
+        private readonly IPushNotificationService _pushNotificationService;
 
-        public KeyController(QlockContext context, IMapper mapper, IKeyGenerationService keyGenerationService)
+        public KeyController(QlockContext context, IMapper mapper, IKeyGenerationService keyGenerationService,IPushNotificationService pushNotificationService)
         {
             _context = context;
             _mapper = mapper;
             _keyGenerationService = keyGenerationService;
+            _pushNotificationService = pushNotificationService;
         }
+
+        //count how many keys belong to a user
+        [HttpGet]
+        [Route("count/{userId}")]
+        public async Task<IActionResult> CountKeys([FromRoute] int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user is null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            var keyCount = await _context.Keys.CountAsync(k => k.UserId == userId);
+
+            return Ok(new { count = keyCount });
+        }
+
+
 
         //Create key
         [HttpPost]
@@ -36,16 +58,27 @@ namespace qlockAPI.Controllers
                 return NotFound(new { error = "Owner not found" });
             }
 
-            var lockEntity = await _context.Locks.AnyAsync(l => l.Id == createKeyDTO.LockId);
-            if (!lockEntity)
+            var lockEntity = await _context.Locks.FindAsync(createKeyDTO.LockId);
+            if (lockEntity is null)
             {
                 return NotFound(new { error = "Lock not found" });
             }
-
+            
             var keyEntity = _mapper.Map<Key>(createKeyDTO);
             keyEntity.SecretKey = _keyGenerationService.GenerateSecretKey();
             keyEntity.CreatedAt = DateTime.Now;
             keyEntity.Status = "Active";
+            if (createKeyDTO.StartTimeString is not null)
+            {
+                keyEntity.StartTime = TimeOnly.ParseExact(createKeyDTO.StartTimeString, "HH:mm");
+                keyEntity.EndTime = TimeOnly.ParseExact(createKeyDTO.EndTimeString!, "HH:mm");
+            }
+            else 
+            {
+                keyEntity.StartTime = null;
+                keyEntity.EndTime = null;
+            }
+            
 
             try
             {
@@ -56,6 +89,13 @@ namespace qlockAPI.Controllers
             {
                 return StatusCode(500, new { error = "An error occurred while creating the key" });
             }
+
+            await _pushNotificationService.SendPushNotificationAsync(new PushRequest
+            {
+                Token = _context.Users.FirstOrDefault(u => u.Id == createKeyDTO.UserId)?.Pushtoken,
+                Title = "New Key Created",
+                Body = $"A new key has been created for you. Lock name is {lockEntity.Name}"
+            });
 
             return Ok(new { message = "Key created" });
         }
